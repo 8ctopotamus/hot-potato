@@ -1,26 +1,10 @@
 (() => {
   const socket = io()  
  
-  const config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    physics: { 
-      default: 'arcade',
-      arcade: { debug: true }
-    },
-    scene: {
-      preload,
-      create,
-      update,
-    } 
-  }
-
-  const game = new Phaser.Game(config)
+  
 
   let cursors
   let player
-  let player2
 
   function preload() {
     
@@ -28,22 +12,12 @@
 
   function create() {
     cursors = this.input.keyboard.createCursorKeys()
-    player = this.add.circle(200, 200, 20, 0x6666ff)
-    this.physics.add.existing(player, false);
-    player.body.setCollideWorldBounds(true);
-    player.body.setBounce(1)
-
-    player2 = this.add.circle(400, 400, 20, 0x3333ee)
-    this.physics.add.existing(player2, false);
-    player2.body.setCollideWorldBounds(true);
-    player2.body.setBounce(1)
-
-    this.physics.add.collider(player, player2)
-
-    socket.on('currentPlayers', renderPlayers)
+    this.otherPlayers = this.physics.add.group()
+    socket.on('currentPlayers', players => renderPlayers(players, this))
   }
 
   function update() {
+    if (!player) return
     player.body.setVelocity(0)
     if (cursors.left.isDown) {
       player.body.setVelocityX(-300)
@@ -57,7 +31,37 @@
     }
   }
 
-  function renderPlayers(players) {
-    console.log(players)
+  function renderPlayers(players, context) {
+    Object.entries(players).forEach(([id, data]) => {
+      const {r,g,b} = new Phaser.Display.Color().random(80, 200);
+      let newPlayer = context.add.circle(data.x, data.y, 20, `0x${r}${g}${b}`)
+      if (socket.id === id) {
+        context.physics.add.existing(newPlayer, false);
+        newPlayer.body.setCollideWorldBounds(true);
+        newPlayer.body.setBounce(1)
+        player = newPlayer
+        context.physics.add.collider(player, context.otherPlayers)
+      } else {
+        context.otherPlayers.add(newPlayer)
+      }
+    })
   }
+
+  const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: { 
+      default: 'arcade',
+      arcade: { debug: false }
+    },
+    scene: {
+      preload,
+      create,
+      update,
+    } 
+  }
+
+  const game = new Phaser.Game(config)
+
 })()
