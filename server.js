@@ -22,7 +22,13 @@ io.on('connection', socket => {
 
   socket.emit('currentPlayers', players)
 
-  socket.on('disconnect', () => console.log(`${socket.id} disconnected`))
+  socket.broadcast.emit('newPlayer', players[socket.id])
+
+  socket.on('disconnect', () => {
+    console.log(`${socket.id} disconnected`)
+    delete players[socket.id]
+    io.emit('disconnected', socket.id)
+  })
 })
 
 http.listen(PORT, () => console.log(`Running on port ${PORT}`))

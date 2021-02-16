@@ -1,8 +1,6 @@
 (() => {
   const socket = io()  
  
-  
-
   let cursors
   let player
 
@@ -13,7 +11,26 @@
   function create() {
     cursors = this.input.keyboard.createCursorKeys()
     this.otherPlayers = this.physics.add.group()
-    socket.on('currentPlayers', players => renderPlayers(players, this))
+
+
+    socket.on('currentPlayers', players => {
+      Object.entries(players).forEach(([id, data]) => {
+        if (id === socket.id) {
+          renderPlayer(data, this)
+        } else {
+          renderOtherPlayers(data, this)
+        }
+      })
+    })
+
+    socket.on('newPlayer', player => renderOtherPlayers(player, this))
+    
+    socket.on('disconnected', playerId => this.otherPlayers.getChildren().forEach(oPlayer => {
+      playerId === oPlayer.playerId && (
+        oPlayer.destroy()
+      )
+    }))
+    
   }
 
   function update() {
@@ -31,20 +48,22 @@
     }
   }
 
-  function renderPlayers(players, context) {
-    Object.entries(players).forEach(([id, data]) => {
-      const {r,g,b} = new Phaser.Display.Color().random(80, 200);
-      let newPlayer = context.add.circle(data.x, data.y, 20, `0x${r}${g}${b}`)
-      if (socket.id === id) {
-        context.physics.add.existing(newPlayer, false);
-        newPlayer.body.setCollideWorldBounds(true);
-        newPlayer.body.setBounce(1)
-        player = newPlayer
-        context.physics.add.collider(player, context.otherPlayers)
-      } else {
-        context.otherPlayers.add(newPlayer)
-      }
-    })
+  function renderPlayer(playerData, context) {
+    console.log('Me', playerData)
+    const {r,g,b} = new Phaser.Display.Color().random(80, 200);
+    let newPlayer = context.add.circle(playerData.x, playerData.y, 20, `0x${r}${g}${b}`)
+    context.physics.add.existing(newPlayer, false);
+    newPlayer.body.setCollideWorldBounds(true);
+    newPlayer.body.setBounce(1)
+    player = newPlayer
+    context.physics.add.collider(player, context.otherPlayers)
+  }
+
+  function renderOtherPlayers(playerData, context) {
+    console.log('Them', playerData)
+    const {r,g,b} = new Phaser.Display.Color().random(80, 200);
+    let newPlayer = context.add.circle(playerData.x, playerData.y, 20, `0x${r}${g}${b}`)
+    context.otherPlayers.add(newPlayer)
   }
 
   const config = {
